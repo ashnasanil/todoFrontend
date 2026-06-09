@@ -1,0 +1,56 @@
+<div class="container mt-5" style="max-width: 600px;">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="m-0">My Tasks</h2>
+    <button class="btn btn-sm btn-outline-danger" (click)="logout()">Logout</button>
+  </div>
+
+  <div *ngIf="errorMessage()" class="alert alert-danger p-2 mb-3 small">
+    {{ errorMessage() }}
+  </div>
+
+  <form class="mb-4" [formGroup]="taskForm" (ngSubmit)="addTask()">
+    <div class="input-group mb-2">
+      <input type="text" class="form-control" placeholder="What needs to be done?" formControlName="title">
+      <button type="submit" class="btn btn-primary px-4" [disabled]="taskForm.invalid">Add</button>
+    </div>
+    <input type="text" class="form-control form-control-sm text-muted" placeholder="Description (Required)" formControlName="description">
+  </form>
+
+  <ul class="list-group shadow-sm">
+    <li class="list-group-item d-flex justify-content-between align-items-start p-3" *ngFor="let task of tasks()">
+      <div class="d-flex align-items-start gap-3">
+        <input class="form-check-input mt-1" type="checkbox" 
+               [checked]="task.isCompleted" 
+               (change)="completeTask(task.id)" 
+               [disabled]="task.isCompleted"
+               style="cursor: pointer;">
+        <div>
+          <h6 class="mb-1" [class.text-decoration-line-through]="task.isCompleted" [class.text-muted]="task.isCompleted">
+            {{ task.title }}
+          </h6>
+          <small class="text-muted" *ngIf="task.description">{{ task.description }}</small>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-danger border-0" (click)="deleteTask(task.id)" title="Delete Task">
+        X
+      </button>
+    </li>
+    
+    <div *ngIf="tasks().length === 0" class="text-center p-4 text-muted border rounded bg-light">
+      No tasks yet. Add one above!
+    </div>
+  </ul>
+
+  <!-- Pagination Controls -->
+  <div *ngIf="totalPages() > 1" class="d-flex justify-content-between align-items-center mt-3 p-2 bg-light border rounded shadow-sm">
+    <button class="btn btn-sm btn-outline-secondary" [disabled]="currentPage() === 1" (click)="prevPage()">
+      &laquo; Previous
+    </button>
+    <span class="text-muted small">
+      Page <strong>{{ currentPage() }}</strong> of <strong>{{ totalPages() }}</strong>
+    </span>
+    <button class="btn btn-sm btn-outline-secondary" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+      Next &raquo;
+    </button>
+  </div>
+</div>

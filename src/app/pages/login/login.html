@@ -1,0 +1,20 @@
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+  <div class="card shadow p-4" style="width: 450px;">
+    <h2 class="text-center mb-4">Login</h2>
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <div *ngIf="errorMessage()" class="alert alert-danger p-2 mb-3 small">
+        {{ errorMessage() }}
+      </div>
+      <div class="mb-3">
+        <input type="email" class="form-control" placeholder="Email" formControlName="email">
+      </div>
+      <div class="mb-3">
+        <input type="password" class="form-control" placeholder="Password" formControlName="password">
+      </div>
+      <button type="submit" class="btn btn-success w-100">Login</button>
+    </form>
+    <div class="text-center mt-3">
+      Don't have an account? <a routerLink="/register">Register</a>
+    </div>
+  </div>
+</div>
