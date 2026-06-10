@@ -1,55 +1,95 @@
 pipeline {
+
     agent any
- 
+
     environment {
-        CONTAINER_NAME = 'todo_web'
-        IMAGE_NAME = 'todo-web'
-        NETWORK_NAME = 'todo_default'
-        PORT_MAPPING = '4202:80'
+
+        ACR     = 'todoacr12345'
+
+        RG      = 'todo-rg'
+
+        AKS     = 'todo-aks'
+
+        IMAGE   = 'todo-frontend'
+
+        AZ_CLIENT_ID     = credentials('azure-client-id')
+
+        AZ_CLIENT_SECRET = credentials('azure-client-secret')
+
+        AZ_TENANT_ID     = credentials('azure-tenant-id')
+
     }
- 
+
     stages {
+
         stage('Checkout') {
-            steps {
-                checkout scm
-            }
+
+            steps { checkout scm }
+
         }
- 
-        stage('Build Docker Image') {
+
+        stage('Build image') {
+
             steps {
-                bat "docker build --no-cache -t ${IMAGE_NAME}:latest -t ${IMAGE_NAME}:${BUILD_NUMBER} ."
+
+                bat 'docker build --platform linux/amd64 -t %ACR%.azurecr.io/%IMAGE%:%BUILD_NUMBER% -t %ACR%.azurecr.io/%IMAGE%:latest .'
+
             }
+
         }
- 
-        stage('Deploy Container') {
+
+        stage('Login to Azure') {
+
             steps {
-                script {
-                    // Ensure Docker network exists
-                    bat "docker network create ${NETWORK_NAME} 2>nul || ver >nul"
-                   
-                    // Stop and remove existing container if running
-                    bat "docker stop ${CONTAINER_NAME} 2>nul || ver >nul"
-                    bat "docker rm ${CONTAINER_NAME} 2>nul || ver >nul"
-                   
-                    // Launch new container using Windows Batch line continuation
-                    bat """
-                        docker run -d ^
-                            --name ${CONTAINER_NAME} ^
-                            --network ${NETWORK_NAME} ^
-                            -p ${PORT_MAPPING} ^
-                            ${IMAGE_NAME}:latest
-                    """
-                }
+
+                bat 'az login --service-principal -u %AZ_CLIENT_ID% -p %AZ_CLIENT_SECRET% --tenant %AZ_TENANT_ID%'
+
+                bat 'az acr login -n %ACR%'
+
             }
+
         }
+
+        stage('Push to ACR') {
+
+            steps {
+
+                bat 'docker push %ACR%.azurecr.io/%IMAGE%:%BUILD_NUMBER%'
+
+                bat 'docker push %ACR%.azurecr.io/%IMAGE%:latest'
+
+            }
+
+        }
+
+        stage('Deploy to AKS') {
+
+            steps {
+
+                bat 'az aks get-credentials -n %AKS% -g %RG% --overwrite-existing'
+
+                powershell '(Get-Content k8s/03-frontend.yaml) -replace "<ACR_NAME>", $env:ACR | Set-Content $env:TEMP\\03-frontend.yaml'
+
+                bat 'kubectl apply -f %TEMP%\\03-frontend.yaml'
+
+                bat 'kubectl set image deployment/todo-frontend todo-frontend=%ACR%.azurecr.io/%IMAGE%:%BUILD_NUMBER%'
+
+                bat 'kubectl rollout status deployment/todo-frontend --timeout=120s'
+
+            }
+
+        }
+
     }
- 
+
     post {
-        success {
-            echo "Frontend pipeline completed successfully!"
-        }
-        failure {
-            echo "Frontend pipeline failed. Please check the logs."
-        }
+
+        success { echo "todo-frontend ${BUILD_NUMBER} deployed to AKS." }
+
+        failure { echo 'todo-frontend pipeline failed.' }
+
+        always  { bat 'az logout || exit 0' }
+
     }
+
 }
