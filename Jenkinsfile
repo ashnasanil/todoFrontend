@@ -88,7 +88,11 @@ pipeline {
 
         failure { echo 'todo-frontend pipeline failed.' }
 
-        always  { bat 'az logout || exit 0' }
+        always  { 
+            node {
+                bat 'az logout || exit 0' 
+            }
+        }
 
     }
 
